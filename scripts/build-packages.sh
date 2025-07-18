@@ -6,7 +6,7 @@ VERSION=${1:-"1.0.0"}
 BUILD_DIR="dist"
 PACKAGE_DIR="packages"
 
-echo "📦 Building DashSpace CLI v$VERSION packages"
+echo "📦 Building DashSpace CLI $VERSION packages"
 
 rm -rf $PACKAGE_DIR
 mkdir -p $PACKAGE_DIR
