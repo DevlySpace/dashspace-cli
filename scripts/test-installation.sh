@@ -3,7 +3,7 @@
 set -e
 
 PACKAGE_DIR="packages"
-VERSION="1.0.0"
+VERSION=${1:-"1.0.0"}
 TEST_DIR="test-install"
 
 echo "🧪 Testing DashSpace CLI installation packages"

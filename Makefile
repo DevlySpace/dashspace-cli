@@ -56,7 +56,7 @@ clean:
 
 test-packages: package
 	chmod +x $(SCRIPTS_DIR)/test-installation.sh
-	$(SCRIPTS_DIR)/test-installation.sh
+	$(SCRIPTS_DIR)/test-installation.sh $(VERSION)
 
 release: package
 	@echo "Creating GitHub release $(VERSION)..."
