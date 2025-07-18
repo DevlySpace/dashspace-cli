@@ -13,7 +13,7 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-echo "🍺 Auto-updating Homebrew tap for v$VERSION"
+echo "🍺 Auto-updating Homebrew tap for $VERSION"
 
 if [ ! -f "$BUILD_DIR/dashspace-darwin-amd64" ] || [ ! -f "$BUILD_DIR/dashspace-darwin-arm64" ]; then
     echo "❌ macOS binaries not found. Run 'make build-all' first"
@@ -35,19 +35,19 @@ class Dashspace < Formula
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-darwin-arm64"
+      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-arm64"
       sha256 "$ARM64_SHA"
     else
-      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-darwin-amd64"
+      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-amd64"
       sha256 "$AMD64_SHA"
     end
   end
 
   def install
     if Hardware::CPU.arm?
-      bin.install "dashspace-darwin-arm64" => "dashspace"
+      bin.install "dashspace-$VERSION-darwin-arm64" => "dashspace"
     else
-      bin.install "dashspace-darwin-amd64" => "dashspace"
+      bin.install "dashspace-$VERSION-darwin-amd64" => "dashspace"
     end
 
     begin
@@ -79,14 +79,14 @@ if [ -n "$GITHUB_TOKEN" ]; then
     if [ -n "$CURRENT_SHA" ]; then
         # File exists, update it
         UPDATE_PAYLOAD=$(jq -n \
-            --arg message "Update DashSpace CLI to v$VERSION" \
+            --arg message "Update DashSpace CLI to $VERSION" \
             --arg content "$ENCODED_CONTENT" \
             --arg sha "$CURRENT_SHA" \
             '{message: $message, content: $content, sha: $sha}')
     else
         # File doesn't exist, create it
         UPDATE_PAYLOAD=$(jq -n \
-            --arg message "Add DashSpace CLI v$VERSION" \
+            --arg message "Add DashSpace CLI $VERSION" \
             --arg content "$ENCODED_CONTENT" \
             '{message: $message, content: $content}')
     fi
