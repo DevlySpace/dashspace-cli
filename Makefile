@@ -1,11 +1,10 @@
 .PHONY: build build-all clean test package install
 
-# Variables
 VERSION = 1.0.0
 BINARY_NAME = dashspace
 BUILD_DIR = dist
+SCRIPTS_DIR = scripts
 
-# Build pour toutes les plateformes
 build-all: clean
 	mkdir -p $(BUILD_DIR)
 	GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 main.go
@@ -14,38 +13,42 @@ build-all: clean
 	GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 main.go
 	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe main.go
 
-# Build local
 build:
 	go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME) main.go
 
-# Test
 test:
 	go test ./...
 
-# Package tous les formats
-package: build-all
-	chmod +x scripts/build-packages.sh
-	./scripts/build-packages.sh $(VERSION)
+setup-scripts:
+	mkdir -p $(SCRIPTS_DIR)
+	@if [ ! -f $(SCRIPTS_DIR)/build-packages.sh ]; then \
+		echo "Creating build-packages.sh script..."; \
+		cp build-packages.sh $(SCRIPTS_DIR)/build-packages.sh 2>/dev/null || echo "build-packages.sh not found in current directory"; \
+	fi
+	@if [ ! -f $(SCRIPTS_DIR)/test-installation.sh ]; then \
+		echo "Creating test-installation.sh script..."; \
+		cp test-installation.sh $(SCRIPTS_DIR)/test-installation.sh 2>/dev/null || echo "test-installation.sh not found in current directory"; \
+	fi
+	chmod +x $(SCRIPTS_DIR)/*.sh
 
-# Installation locale
+package: build-all setup-scripts
+	chmod +x $(SCRIPTS_DIR)/build-packages.sh
+	$(SCRIPTS_DIR)/build-packages.sh $(VERSION)
+
 install: build
 	sudo cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
 
-# Nettoyage
 clean:
 	rm -rf $(BUILD_DIR) packages/
 
-# Test des packages
 test-packages: package
-	chmod +x scripts/test-installation.sh
-	./scripts/test-installation.sh
+	chmod +x $(SCRIPTS_DIR)/test-installation.sh
+	$(SCRIPTS_DIR)/test-installation.sh
 
-# Release GitHub (nécessite gh CLI)
 release: package
 	@echo "Creating GitHub release v$(VERSION)..."
 	gh release create v$(VERSION) packages/* --title "DashSpace CLI v$(VERSION)" --notes "Release notes for v$(VERSION)"
 
-# Aide
 help:
 	@echo "Available targets:"
 	@echo "  build       - Build binary for current platform"

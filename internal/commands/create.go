@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/devlyspace/devly-cli/internal/templates"
 	"github.com/spf13/cobra"

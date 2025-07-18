@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/devlyspace/devly-cli/internal/config"
 )
@@ -40,6 +39,15 @@ type ModuleManifest struct {
 	Interfaces  []string `json:"interfaces"`
 }
 
+type ModuleSearchResult struct {
+	ID          int      `json:"id"`
+	Name        string   `json:"name"`
+	Version     string   `json:"version"`
+	Description string   `json:"description"`
+	Author      string   `json:"author"`
+	Tags        []string `json:"tags"`
+}
+
 func NewClient() *Client {
 	cfg := config.GetConfig()
 	return &Client{
@@ -49,8 +57,6 @@ func NewClient() *Client {
 }
 
 func (c *Client) Login(email, password string) (*AuthResponse, error) {
-	// Note: Adapté selon l'API d'authentification de DashSpace
-	// Pour l'instant, simulation - à adapter selon Authenty
 	payload := map[string]string{
 		"email":    email,
 		"password": password,
@@ -84,7 +90,6 @@ func (c *Client) GetCurrentUser() (*User, error) {
 }
 
 func (c *Client) CreateOrGetModule(manifest *ModuleManifest) (int, error) {
-	// Utilise l'endpoint POST /modules de Modly
 	payload := map[string]interface{}{
 		"name":         manifest.Name,
 		"display_name": manifest.Name,
@@ -103,30 +108,44 @@ func (c *Client) CreateOrGetModule(manifest *ModuleManifest) (int, error) {
 		return 0, err
 	}
 
-	// Récupérer l'ID du module créé
 	if id, ok := result["id"].(float64); ok {
 		return int(id), nil
 	}
 
-	return 0, fmt.Errorf("impossible de récupérer l'ID du module")
+	return 0, fmt.Errorf("unable to get module ID")
+}
+
+func (c *Client) SearchModules(query string) ([]ModuleSearchResult, error) {
+	endpoint := fmt.Sprintf("/modules?search=%s", query)
+	resp, err := c.get(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	var searchResponse struct {
+		Items []ModuleSearchResult `json:"items"`
+		Total int                  `json:"total"`
+	}
+
+	if err := json.Unmarshal(resp, &searchResponse); err != nil {
+		return nil, err
+	}
+
+	return searchResponse.Items, nil
 }
 
 func (c *Client) UploadModuleVersion(moduleID int, zipPath string) (int, error) {
-	// Utilise l'endpoint POST /modules/{module_id}/module_versions/upload de Modly
 	url := fmt.Sprintf("%s/modules/%d/module_versions/upload", c.baseURL, moduleID)
 
-	// Ouvrir le fichier ZIP
 	file, err := os.Open(zipPath)
 	if err != nil {
 		return 0, err
 	}
 	defer file.Close()
 
-	// Créer le multipart form
 	var b bytes.Buffer
 	writer := multipart.NewWriter(&b)
 
-	// Ajouter le fichier
 	part, err := writer.CreateFormFile("file", filepath.Base(zipPath))
 	if err != nil {
 		return 0, err
@@ -138,7 +157,6 @@ func (c *Client) UploadModuleVersion(moduleID int, zipPath string) (int, error) 
 
 	writer.Close()
 
-	// Créer la requête
 	req, err := http.NewRequest("POST", url, &b)
 	if err != nil {
 		return 0, err
@@ -146,12 +164,10 @@ func (c *Client) UploadModuleVersion(moduleID int, zipPath string) (int, error) 
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	// Ajouter l'authentification si disponible
 	if token := config.GetConfig().AuthToken; token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	// Envoyer la requête
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return 0, err
@@ -160,10 +176,9 @@ func (c *Client) UploadModuleVersion(moduleID int, zipPath string) (int, error) 
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
-		return 0, fmt.Errorf("erreur API (%d): %s", resp.StatusCode, string(body))
+		return 0, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
 	}
 
-	// Lire la réponse
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, err
@@ -174,12 +189,11 @@ func (c *Client) UploadModuleVersion(moduleID int, zipPath string) (int, error) 
 		return 0, err
 	}
 
-	// Récupérer l'ID de la version
 	if id, ok := result["id"].(float64); ok {
 		return int(id), nil
 	}
 
-	return 0, fmt.Errorf("impossible de récupérer l'ID de la version")
+	return 0, fmt.Errorf("unable to get version ID")
 }
 
 func (c *Client) get(endpoint string) ([]byte, error) {
@@ -208,7 +222,6 @@ func (c *Client) request(method, endpoint string, payload interface{}) ([]byte, 
 
 	req.Header.Set("Content-Type", "application/json")
 
-	// Ajouter l'authentification si disponible
 	if token := config.GetConfig().AuthToken; token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -225,7 +238,7 @@ func (c *Client) request(method, endpoint string, payload interface{}) ([]byte, 
 	}
 
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("erreur API (%d): %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("API error (%d): %s", resp.StatusCode, string(respBody))
 	}
 
 	return respBody, nil

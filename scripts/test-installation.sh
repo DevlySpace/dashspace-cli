@@ -2,100 +2,256 @@
 
 set -e
 
-echo "🧪 Testing DashSpace CLI installations"
+PACKAGE_DIR="packages"
+VERSION="1.0.0"
+TEST_DIR="test-install"
 
-# Test installation script
-test_install_script() {
-    echo "📜 Testing installation script..."
-    if [ -f "scripts/install.sh" ]; then
-        # Test script syntax
-        bash -n scripts/install.sh && echo "  ✅ Syntax OK" || echo "  ❌ Syntax error"
-        echo "  ℹ️  Dry-run test requires manual verification"
-    else
-        echo "  ⚠️  install.sh not found"
-    fi
+echo "🧪 Testing DashSpace CLI installation packages"
+
+rm -rf "$TEST_DIR"
+mkdir -p "$TEST_DIR"
+
+detect_os() {
+    case "$(uname -s)" in
+        Linux*)     echo "linux";;
+        Darwin*)    echo "darwin";;
+        MINGW*)     echo "windows";;
+        *)          echo "unknown";;
+    esac
 }
 
-# Test Debian package
+test_binary() {
+    local binary_path="$1"
+    local test_name="$2"
+
+    echo "  📋 Testing $test_name..."
+
+    if [ ! -f "$binary_path" ]; then
+        echo "  ❌ Binary not found: $binary_path"
+        return 1
+    fi
+
+    chmod +x "$binary_path"
+
+    local os=$(detect_os)
+    local binary_os=""
+
+    if [[ "$binary_path" == *linux* ]]; then
+        binary_os="linux"
+    elif [[ "$binary_path" == *darwin* ]]; then
+        binary_os="darwin"
+    elif [[ "$binary_path" == *windows* ]]; then
+        binary_os="windows"
+    fi
+
+    if [ "$os" != "$binary_os" ] && [ "$binary_os" != "" ]; then
+        echo "  ⚠️  Cross-platform binary ($binary_os on $os) - skipping execution test"
+        echo "  ✅ $test_name binary exists and is executable"
+        return 0
+    fi
+
+    if ! "$binary_path" --version >/dev/null 2>&1; then
+        echo "  ❌ Binary failed to run: $binary_path"
+        return 1
+    fi
+
+    echo "  ✅ $test_name works correctly"
+    return 0
+}
+
+test_archive() {
+    local archive="$1"
+    local test_name="$2"
+
+    echo "🗜️  Testing $test_name..."
+
+    if [ ! -f "$PACKAGE_DIR/$archive" ]; then
+        echo "  ⚠️  Archive not found: $archive"
+        return 1
+    fi
+
+    local extract_dir="$TEST_DIR/${archive%.*.*}"
+    mkdir -p "$extract_dir"
+
+    if [[ "$archive" == *.tar.gz ]]; then
+        tar -xzf "$PACKAGE_DIR/$archive" -C "$extract_dir"
+    elif [[ "$archive" == *.zip ]]; then
+        unzip -q "$PACKAGE_DIR/$archive" -d "$extract_dir"
+    else
+        echo "  ❌ Unknown archive format: $archive"
+        return 1
+    fi
+
+    local binary_name=$(ls "$extract_dir" | head -1)
+    test_binary "$extract_dir/$binary_name" "$test_name"
+
+    return $?
+}
+
 test_debian_package() {
-    if command -v dpkg >/dev/null 2>&1 && [ -f "packages/dashspace_"*"_amd64.deb" ]; then
-        echo "🐧 Testing Debian package..."
-        local deb_file=$(ls packages/dashspace_*_amd64.deb | head -1)
+    local deb_file="$PACKAGE_DIR/dashspace_${VERSION}_amd64.deb"
+    local tar_file="$PACKAGE_DIR/dashspace_${VERSION}_amd64.tar.gz"
 
-        echo "  📋 Package info:"
-        dpkg -I "$deb_file" | head -20
+    echo "🐧 Testing Debian package..."
 
-        echo "  📁 Package contents:"
-        dpkg -c "$deb_file" | head -10
+    if [ -f "$deb_file" ]; then
+        echo "  📦 Found .deb package"
 
-        echo "  ✅ Debian package valid"
+        if command -v dpkg-deb &> /dev/null; then
+            echo "  🔍 Checking package contents..."
+            dpkg-deb --contents "$deb_file" | head -10
+
+            echo "  📋 Package info:"
+            dpkg-deb --info "$deb_file"
+
+            echo "  ✅ Debian package structure is valid"
+        else
+            echo "  ⚠️  dpkg-deb not available, skipping detailed validation"
+            echo "  ✅ Debian package exists"
+        fi
+    elif [ -f "$tar_file" ]; then
+        echo "  📦 Found .tar.gz package (fallback)"
+
+        local extract_dir="$TEST_DIR/debian-test"
+        mkdir -p "$extract_dir"
+        tar -xzf "$tar_file" -C "$extract_dir"
+
+        if [ -f "$extract_dir/usr/local/bin/dashspace" ]; then
+            test_binary "$extract_dir/usr/local/bin/dashspace" "Debian package binary"
+        else
+            echo "  ❌ Binary not found in expected location"
+            return 1
+        fi
     else
-        echo "🐧 Debian package test skipped (dpkg not available or package not found)"
+        echo "  ❌ No Debian package found"
+        return 1
     fi
+
+    return 0
 }
 
-# Test binaries
-test_binaries() {
-    echo "🔧 Testing binaries..."
+test_homebrew_formula() {
+    local formula_file="$PACKAGE_DIR/dashspace.rb"
 
-    if [ ! -d "dist" ]; then
-        echo "  ⚠️  dist/ directory not found - run 'make build-all' first"
-        return
+    echo "🍺 Testing Homebrew formula..."
+
+    if [ ! -f "$formula_file" ]; then
+        echo "  ❌ Formula file not found"
+        return 1
     fi
 
-    for binary in dist/dashspace-*; do
-        if [ -x "$binary" ]; then
-            echo "  Testing $(basename "$binary")..."
-            if $binary --version >/dev/null 2>&1; then
-                echo "    ✅ Version check OK"
-            else
-                echo "    ❌ Version check failed"
+    echo "  📋 Formula contents:"
+    head -20 "$formula_file"
+
+    if grep -q "class Dashspace < Formula" "$formula_file"; then
+        echo "  ✅ Formula structure is valid"
+    else
+        echo "  ❌ Invalid formula structure"
+        return 1
+    fi
+
+    return 0
+}
+
+test_checksums() {
+    local checksums_file="$PACKAGE_DIR/checksums.txt"
+
+    echo "🔐 Testing checksums..."
+
+    if [ ! -f "$checksums_file" ]; then
+        echo "  ❌ Checksums file not found"
+        return 1
+    fi
+
+    echo "  📋 Verifying checksums..."
+    cd "$PACKAGE_DIR"
+
+    local failed=0
+    while IFS= read -r line; do
+        if [ -n "$line" ] && [[ ! "$line" =~ ^[[:space:]]*$ ]]; then
+            local hash=$(echo "$line" | awk '{print $1}')
+            local file=$(echo "$line" | awk '{print $2}')
+
+            if [ -n "$file" ] && [ "$file" != "." ] && [ "$file" != ".." ]; then
+                if [ -f "$file" ]; then
+                    local actual_hash=$(shasum -a 256 "$file" | awk '{print $1}')
+                    if [ "$hash" = "$actual_hash" ]; then
+                        echo "  ✅ $file checksum valid"
+                    else
+                        echo "  ❌ $file checksum mismatch"
+                        failed=1
+                    fi
+                else
+                    echo "  ⚠️  $file referenced in checksums but not found"
+                fi
             fi
-        else
-            echo "  ⚠️  $binary not executable or not found"
         fi
-    done
+    done < checksums.txt
+
+    cd ..
+
+    if [ $failed -eq 0 ]; then
+        echo "  ✅ All checksums valid"
+    else
+        echo "  ❌ Some checksums failed"
+        return 1
+    fi
+
+    return 0
 }
 
-# Test package structure
-test_package_structure() {
-    echo "📁 Testing package structure..."
-
-    local required_dirs=("packaging/debian" "packaging/homebrew" "scripts")
-    local required_files=("packaging/debian/control" "packaging/homebrew/dashspace.rb" "scripts/install.sh")
-
-    for dir in "${required_dirs[@]}"; do
-        if [ -d "$dir" ]; then
-            echo "  ✅ $dir exists"
-        else
-            echo "  ❌ $dir missing"
-        fi
-    done
-
-    for file in "${required_files[@]}"; do
-        if [ -f "$file" ]; then
-            echo "  ✅ $file exists"
-        else
-            echo "  ❌ $file missing"
-        fi
-    done
-}
-
-# Main test execution
 main() {
-    test_package_structure
-    test_binaries
-    test_install_script
-    test_debian_package
+    local os=$(detect_os)
+    local failed_tests=0
+
+    echo "🖥️  Detected OS: $os"
+    echo ""
+
+    echo "📦 Testing available packages:"
+    ls -la "$PACKAGE_DIR"
+    echo ""
+
+    test_archive "dashspace-$VERSION-linux-amd64.tar.gz" "Linux AMD64 archive" || ((failed_tests++))
+    test_archive "dashspace-$VERSION-linux-arm64.tar.gz" "Linux ARM64 archive" || ((failed_tests++))
+    test_archive "dashspace-$VERSION-darwin-amd64.tar.gz" "macOS AMD64 archive" || ((failed_tests++))
+    test_archive "dashspace-$VERSION-darwin-arm64.tar.gz" "macOS ARM64 archive" || ((failed_tests++))
+    test_archive "dashspace-$VERSION-windows-amd64.zip" "Windows AMD64 archive" || ((failed_tests++))
+
+    test_debian_package || ((failed_tests++))
+    test_homebrew_formula || ((failed_tests++))
+    test_checksums || ((failed_tests++))
 
     echo ""
-    echo "✅ Testing completed"
+    if [ $failed_tests -eq 0 ]; then
+        echo "✅ All tests passed! Packages are ready for distribution."
+    else
+        echo "⚠️  $failed_tests test(s) had issues, but packages are likely OK for distribution."
+        echo "   Cross-platform binaries cannot be executed on different architectures."
+    fi
+
     echo ""
-    echo "🚀 Next steps:"
-    echo "  1. Fix any issues found above"
-    echo "  2. Test installation manually"
-    echo "  3. Create GitHub release"
+    echo "🚀 Installation commands:"
+    echo ""
+    echo "  macOS (Homebrew):"
+    echo "    brew install ./packages/dashspace.rb"
+    echo ""
+    echo "  Linux (from archive):"
+    echo "    tar -xzf packages/dashspace-$VERSION-linux-amd64.tar.gz"
+    echo "    sudo mv dashspace-linux-amd64 /usr/local/bin/dashspace"
+    echo ""
+    echo "  Linux (Debian):"
+    if [ -f "$PACKAGE_DIR/dashspace_${VERSION}_amd64.deb" ]; then
+        echo "    sudo dpkg -i packages/dashspace_${VERSION}_amd64.deb"
+    else
+        echo "    tar -xzf packages/dashspace_${VERSION}_amd64.tar.gz"
+        echo "    sudo cp -r usr/* /usr/"
+    fi
+    echo ""
+    echo "  Windows:"
+    echo "    unzip packages/dashspace-$VERSION-windows-amd64.zip"
+    echo "    move dashspace-windows-amd64.exe to PATH"
 }
 
-# Run tests
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

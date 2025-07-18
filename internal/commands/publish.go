@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/devlyspace/devly-cli/internal/api"
 	"github.com/devlyspace/devly-cli/internal/utils"
@@ -15,66 +14,77 @@ func NewPublishCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "publish",
-		Short: "Publier le module sur le store DashSpace",
+		Short: "Publish module to DashSpace store",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return publishModule(dryRun)
 		},
 	}
 
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulation sans publication réelle")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate without actual publishing")
 
 	return cmd
 }
 
 func publishModule(dryRun bool) error {
-	// Vérifier qu'on est dans un dossier de module
+	// Check if we're in a module directory
 	if _, err := os.Stat("devly.json"); err != nil {
-		return fmt.Errorf("❌ Pas de fichier devly.json trouvé")
+		return fmt.Errorf("❌ devly.json file not found")
 	}
 
-	fmt.Println("📦 Publication du module...")
+	fmt.Println("📦 Publishing module...")
 
-	// Lire le manifest
+	// Read manifest
 	manifest, err := utils.ReadManifest("devly.json")
 	if err != nil {
-		return fmt.Errorf("erreur lecture manifest: %v", err)
+		return fmt.Errorf("error reading manifest: %v", err)
 	}
 
 	fmt.Printf("📋 Module: %s v%s\n", manifest.Name, manifest.Version)
 	fmt.Printf("📝 Description: %s\n", manifest.Description)
 
 	if dryRun {
-		fmt.Println("🔍 Mode dry-run - aucune publication réelle")
+		fmt.Println("🔍 Dry-run mode - no actual publishing")
 		return nil
 	}
 
-	// Créer l'archive ZIP
-	fmt.Println("📁 Création de l'archive...")
+	// Create ZIP archive
+	fmt.Println("📁 Creating archive...")
 	zipPath, err := utils.CreateModuleArchive(".")
 	if err != nil {
-		return fmt.Errorf("erreur création archive: %v", err)
+		return fmt.Errorf("error creating archive: %v", err)
 	}
-	defer os.Remove(zipPath) // Nettoyer après
+	defer os.Remove(zipPath) // Clean up after
 
-	fmt.Printf("📦 Archive créée: %s\n", zipPath)
+	fmt.Printf("📦 Archive created: %s\n", zipPath)
 
-	// Publier via l'API
+	// Publish via API
 	client := api.NewClient()
 
-	// 1. Créer ou récupérer le module
-	moduleID, err := client.CreateOrGetModule(manifest)
-	if err != nil {
-		return fmt.Errorf("erreur création module: %v", err)
+	// Convert utils.Manifest to api.ModuleManifest
+	apiManifest := &api.ModuleManifest{
+		ID:          manifest.ID,
+		Name:        manifest.Name,
+		Version:     manifest.Version,
+		Description: manifest.Description,
+		Author:      manifest.Author,
+		Providers:   manifest.Providers,
+		Interfaces:  manifest.Interfaces,
 	}
 
-	// 2. Upload la nouvelle version
-	fmt.Println("⬆️  Upload en cours...")
+	// 1. Create or get module
+	moduleID, err := client.CreateOrGetModule(apiManifest)
+	if err != nil {
+		return fmt.Errorf("error creating module: %v", err)
+	}
+
+	// 2. Upload new version
+	fmt.Println("⬆️  Uploading...")
 	versionID, err := client.UploadModuleVersion(moduleID, zipPath)
 	if err != nil {
-		return fmt.Errorf("erreur upload: %v", err)
+		return fmt.Errorf("error uploading: %v", err)
 	}
 
-	fmt.Printf("✅ Module publié avec succès!\n")
+	fmt.Printf("✅ Module published successfully!\n")
 	fmt.Printf("🆔 Module ID: %d\n", moduleID)
 	fmt.Printf("📦 Version ID: %d\n", versionID)
 	fmt.Printf("🔗 Store: https://store.dashspace.dev/modules/%d\n", moduleID)
