@@ -74,27 +74,21 @@ if [ -n "$GITHUB_TOKEN" ]; then
         | jq -r '.sha // empty')
 
     # Prepare the update payload
-    ENCODED_CONTENT=$(echo "$FORMULA_CONTENT" | base64)
+    ENCODED_CONTENT=$(echo "$FORMULA_CONTENT" | base64 -w 0)
 
     if [ -n "$CURRENT_SHA" ]; then
         # File exists, update it
-        UPDATE_PAYLOAD=$(cat << EOF
-{
-  "message": "Update DashSpace CLI to v$VERSION",
-  "content": "$ENCODED_CONTENT",
-  "sha": "$CURRENT_SHA"
-}
-EOF
-)
+        UPDATE_PAYLOAD=$(jq -n \
+            --arg message "Update DashSpace CLI to v$VERSION" \
+            --arg content "$ENCODED_CONTENT" \
+            --arg sha "$CURRENT_SHA" \
+            '{message: $message, content: $content, sha: $sha}')
     else
         # File doesn't exist, create it
-        UPDATE_PAYLOAD=$(cat << EOF
-{
-  "message": "Add DashSpace CLI v$VERSION",
-  "content": "$ENCODED_CONTENT"
-}
-EOF
-)
+        UPDATE_PAYLOAD=$(jq -n \
+            --arg message "Add DashSpace CLI v$VERSION" \
+            --arg content "$ENCODED_CONTENT" \
+            '{message: $message, content: $content}')
     fi
 
     # Update the file
