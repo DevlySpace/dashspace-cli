@@ -1,4 +1,4 @@
-.PHONY: build build-all clean test package install
+.PHONY: build build-all clean test package install update-homebrew complete-release
 
 VERSION = 1.0.0
 BINARY_NAME = dashspace
@@ -46,8 +46,17 @@ test-packages: package
 	$(SCRIPTS_DIR)/test-installation.sh
 
 release: package
-	@echo "Creating GitHub release v$(VERSION)..."
-	gh release create v$(VERSION) packages/* --title "DashSpace CLI v$(VERSION)" --notes "Release notes for v$(VERSION)"
+	@echo "Creating GitHub release $(VERSION)..."
+	gh release create $(VERSION) packages/* --title "DashSpace CLI $(VERSION)" --notes "Release notes for $(VERSION)"
+
+update-homebrew: build-all
+	chmod +x $(SCRIPTS_DIR)/update-homebrew.sh
+	$(SCRIPTS_DIR)/update-homebrew.sh $(VERSION)
+
+complete-release:
+	@read -p "Enter version (e.g., 1.0.0): " version; \
+	chmod +x $(SCRIPTS_DIR)/release-workflow.sh; \
+	$(SCRIPTS_DIR)/release-workflow.sh $$version
 
 help:
 	@echo "Available targets:"
@@ -59,3 +68,5 @@ help:
 	@echo "  clean       - Clean build artifacts"
 	@echo "  test-packages - Test all packages"
 	@echo "  release     - Create GitHub release"
+	@echo "  update-homebrew - Update Homebrew formula with latest checksums"
+	@echo "  complete-release - Full release workflow (interactive)"

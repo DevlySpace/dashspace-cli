@@ -1,61 +1,120 @@
-name: Release DashSpace CLI
+name: Release DashSpace CLI with Homebrew Tap
 
 on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+env:
+  GO_VERSION: '1.21'
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: ${{ env.GO_VERSION }}
 
-      - name: Get version from tag
+      - name: Get version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Build all packages
         run: |
-          make build-all
-          chmod +x scripts/build-packages.sh
-          ./scripts/build-packages.sh ${{ steps.version.outputs.VERSION }}
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev jq
+
+      - name: Build packages
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          make package VERSION=$VERSION
 
       - name: Test packages
         run: |
-          chmod +x scripts/test-installation.sh
-          ./scripts/test-installation.sh
+          make test-packages
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            packages/*.tar.gz
-            packages/*.zip
-            packages/*.deb
-            packages/dashspace.rb
-            packages/checksums.txt
-          generate_release_notes: true
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "DashSpace CLI ${{ steps.version.outputs.version }}"
+          body: |
+            # DashSpace CLI ${{ steps.version.outputs.version }}
+            
+            ## 📦 Installation
+            
+            ### macOS (Homebrew)
+            ```bash
+            brew tap devlyspace/dashspace
+            brew install dashspace
+            ```
+            
+            ### Linux (Debian/Ubuntu)
+            ```bash
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/dashspace_${{ steps.version.outputs.version }}_amd64.deb
+            sudo dpkg -i dashspace_${{ steps.version.outputs.version }}_amd64.deb
+            ```
+            
+            ### Universal installer
+            ```bash
+            curl -fsSL https://get.dashspace.dev | sh
+            ```
+            
+            ## 🔐 Checksums
+            
+            See `checksums.txt` for file verification.
           draft: false
           prerelease: false
+          files: |
+            packages/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update Homebrew tap (if exists)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+      - name: Update Homebrew Tap
+        env:
+          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          echo "🍺 Homebrew formula updated in packages/dashspace.rb"
-          echo "Submit to your homebrew tap or homebrew-core"
+          VERSION=${{ steps.version.outputs.version }}
+          if [ -n "$GITHUB_TOKEN" ]; then
+            echo "🍺 Updating Homebrew tap..."
+            chmod +x auto-update-tap.sh
+            ./auto-update-tap.sh $VERSION devlyspace/homebrew-dashspace
+          else
+            echo "⚠️  HOMEBREW_TAP_TOKEN not set. Homebrew tap will not be updated automatically."
+            echo "📋 Manual update required for homebrew-dashspace repository."
+          fi
 
-      - name: Upload Debian package
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+      - name: Notify success
         run: |
-          echo "🐧 Debian package ready for APT repository"
-          echo "Upload packages/dashspace_${{ steps.version.outputs.VERSION }}_amd64.deb to your APT repo"
+          VERSION=${{ steps.version.outputs.version }}
+          echo "🎉 Release ${VERSION} created successfully!"
+          echo ""
+          echo "📦 Available installations:"
+          echo "- Homebrew: brew tap devlyspace/dashspace && brew install dashspace"
+          echo "- GitHub: https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
+          echo "- Debian: Available in release assets"
+          echo ""
+          echo "🔗 Links:"
+          echo "- Release: https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
+          echo "- Homebrew Tap: https://github.com/devlyspace/homebrew-dashspace"
