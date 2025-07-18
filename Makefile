@@ -1,6 +1,6 @@
 .PHONY: build build-all clean test package install update-homebrew update-tap complete-release
 
-VERSION = 1.0.0
+VERSION ?= 1.0.0
 BINARY_NAME = dashspace
 BUILD_DIR = dist
 SCRIPTS_DIR = scripts
