@@ -1,4 +1,4 @@
-.PHONY: build build-all clean test package install update-homebrew complete-release
+.PHONY: build build-all clean test package install update-homebrew update-tap complete-release
 
 VERSION = 1.0.0
 BINARY_NAME = dashspace
@@ -14,6 +14,7 @@ build-all: clean
 	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe main.go
 
 build:
+	mkdir -p $(BUILD_DIR)
 	go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME) main.go
 
 test:
@@ -28,6 +29,18 @@ setup-scripts:
 	@if [ ! -f $(SCRIPTS_DIR)/test-installation.sh ]; then \
 		echo "Creating test-installation.sh script..."; \
 		cp test-installation.sh $(SCRIPTS_DIR)/test-installation.sh 2>/dev/null || echo "test-installation.sh not found in current directory"; \
+	fi
+	@if [ ! -f $(SCRIPTS_DIR)/update-homebrew.sh ]; then \
+		echo "Creating update-homebrew.sh script..."; \
+		cp update-homebrew.sh $(SCRIPTS_DIR)/update-homebrew.sh 2>/dev/null || echo "update-homebrew.sh not found in current directory"; \
+	fi
+	@if [ ! -f $(SCRIPTS_DIR)/auto-update-tap.sh ]; then \
+		echo "Creating auto-update-tap.sh script..."; \
+		cp auto-update-tap.sh $(SCRIPTS_DIR)/auto-update-tap.sh 2>/dev/null || echo "auto-update-tap.sh not found in current directory"; \
+	fi
+	@if [ ! -f $(SCRIPTS_DIR)/release-workflow.sh ]; then \
+		echo "Creating release-workflow.sh script..."; \
+		cp release-workflow.sh $(SCRIPTS_DIR)/release-workflow.sh 2>/dev/null || echo "release-workflow.sh not found in current directory"; \
 	fi
 	chmod +x $(SCRIPTS_DIR)/*.sh
 
@@ -49,14 +62,18 @@ release: package
 	@echo "Creating GitHub release $(VERSION)..."
 	gh release create $(VERSION) packages/* --title "DashSpace CLI $(VERSION)" --notes "Release notes for $(VERSION)"
 
-update-homebrew: build-all
+update-homebrew: build-all setup-scripts
 	chmod +x $(SCRIPTS_DIR)/update-homebrew.sh
 	$(SCRIPTS_DIR)/update-homebrew.sh $(VERSION)
 
-complete-release:
+update-tap: build-all setup-scripts
+	chmod +x $(SCRIPTS_DIR)/auto-update-tap.sh
+	$(SCRIPTS_DIR)/auto-update-tap.sh $(VERSION)
+
+complete-release: setup-scripts
 	@read -p "Enter version (e.g., 1.0.0): " version; \
 	chmod +x $(SCRIPTS_DIR)/release-workflow.sh; \
-	$(SCRIPTS_DIR)/release-workflow.sh $$version
+	$(SCRIPTS_DIR)/release-workflow.sh $version
 
 help:
 	@echo "Available targets:"
@@ -68,5 +85,6 @@ help:
 	@echo "  clean       - Clean build artifacts"
 	@echo "  test-packages - Test all packages"
 	@echo "  release     - Create GitHub release"
-	@echo "  update-homebrew - Update Homebrew formula with latest checksums"
+	@echo "  update-homebrew - Update local Homebrew formula"
+	@echo "  update-tap  - Auto-update Homebrew tap repository"
 	@echo "  complete-release - Full release workflow (interactive)"

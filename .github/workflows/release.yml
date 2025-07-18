@@ -98,8 +98,8 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           if [ -n "$GITHUB_TOKEN" ]; then
             echo "🍺 Updating Homebrew tap..."
-            chmod +x auto-update-tap.sh
-            ./auto-update-tap.sh $VERSION devlyspace/homebrew-dashspace
+            chmod +x scripts/auto-update-tap.sh
+            ./scripts/auto-update-tap.sh $VERSION devlyspace/homebrew-dashspace
           else
             echo "⚠️  HOMEBREW_TAP_TOKEN not set. Homebrew tap will not be updated automatically."
             echo "📋 Manual update required for homebrew-dashspace repository."
