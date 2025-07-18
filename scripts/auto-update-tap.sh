@@ -15,14 +15,14 @@ fi
 
 echo "🍺 Auto-updating Homebrew tap for $VERSION"
 
-if [ ! -f "$BUILD_DIR/dashspace-darwin-amd64" ] || [ ! -f "$BUILD_DIR/dashspace-darwin-arm64" ]; then
+if [ ! -f "$BUILD_DIR/dashspace-darwin-amd64.tar.gz" ] || [ ! -f "$BUILD_DIR/dashspace-darwin-arm64.tar.gz" ]; then
     echo "❌ macOS binaries not found. Run 'make build-all' first"
     exit 1
 fi
 
 echo "🔐 Calculating checksums..."
-AMD64_SHA=$(shasum -a 256 "$BUILD_DIR/dashspace-darwin-amd64" | cut -d' ' -f1)
-ARM64_SHA=$(shasum -a 256 "$BUILD_DIR/dashspace-darwin-arm64" | cut -d' ' -f1)
+AMD64_SHA=$(shasum -a 256 "$BUILD_DIR/dashspace-darwin-amd64.tar.gz" | cut -d' ' -f1)
+ARM64_SHA=$(shasum -a 256 "$BUILD_DIR/dashspace-darwin-arm64.tar.gz" | cut -d' ' -f1)
 
 echo "📝 Generating updated formula..."
 
@@ -35,25 +35,20 @@ class Dashspace < Formula
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-arm64"
+      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-arm64.tar.gz"
       sha256 "$ARM64_SHA"
     else
-      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-amd64"
+      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-amd64.tar.gz"
       sha256 "$AMD64_SHA"
     end
   end
 
   def install
-    if Hardware::CPU.arm?
-      bin.install "dashspace-$VERSION-darwin-arm64" => "dashspace"
-    else
-      bin.install "dashspace-$VERSION-darwin-amd64" => "dashspace"
-    end
+    bin.install "dashspace" => "dashspace"
 
     begin
       generate_completions_from_executable(bin/"dashspace", "completion")
     rescue
-      # Ignore if completion not supported
     end
   end
 
@@ -68,30 +63,25 @@ EOF
 if [ -n "$GITHUB_TOKEN" ]; then
     echo "🚀 Updating Homebrew tap via GitHub API..."
 
-    # Get current file SHA (needed for GitHub API)
     CURRENT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
         "https://api.github.com/repos/$HOMEBREW_TAP_REPO/contents/Formula/dashspace.rb" \
         | jq -r '.sha // empty')
 
-    # Prepare the update payload
     ENCODED_CONTENT=$(echo "$FORMULA_CONTENT" | base64 -w 0)
 
     if [ -n "$CURRENT_SHA" ]; then
-        # File exists, update it
         UPDATE_PAYLOAD=$(jq -n \
             --arg message "Update DashSpace CLI to $VERSION" \
             --arg content "$ENCODED_CONTENT" \
             --arg sha "$CURRENT_SHA" \
             '{message: $message, content: $content, sha: $sha}')
     else
-        # File doesn't exist, create it
         UPDATE_PAYLOAD=$(jq -n \
             --arg message "Add DashSpace CLI $VERSION" \
             --arg content "$ENCODED_CONTENT" \
             '{message: $message, content: $content}')
     fi
 
-    # Update the file
     RESPONSE=$(curl -s -X PUT \
         -H "Authorization: token $GITHUB_TOKEN" \
         -H "Content-Type: application/json" \
