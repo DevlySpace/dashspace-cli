@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>dashspace-cli</id>
+    <version>1.0.0</version>
+    <packageSourceUrl>https://github.com/dashspace/cli</packageSourceUrl>
+    <owners>DashSpace Team</owners>
+    <title>DashSpace CLI</title>
+    <authors>DashSpace Team</authors>
+    <projectUrl>https://dashspace.space</projectUrl>
+    <iconUrl>https://dashspace.space/icon.png</iconUrl>
+    <copyright>2024 DashSpace Team</copyright>
+    <licenseUrl>https://github.com/dashspace/cli/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/dashspace/cli</projectSourceUrl>
+    <docsUrl>https://docs.dashspace.dev/cli</docsUrl>
+    <bugTrackerUrl>https://github.com/dashspace/cli/issues</bugTrackerUrl>
+    <tags>dashspace cli development modules</tags>
+    <summary>Official CLI for creating and publishing DashSpace modules</summary>
+    <description>
+DashSpace CLI enables developers to create, test and publish modules for the DashSpace ecosystem.
+
+Features:
+- Create modules with interactive templates
+- Preview modules in Buildy editor
+- Publish to DashSpace store
+- Manage authentication
+- Search and discover modules
+
+Templates available: React, Vanilla JS, Chart widgets, Form widgets, List widgets
+    </description>
+    <releaseNotes>https://github.com/dashspace/cli/releases/tag/v1.0.0</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

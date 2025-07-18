@@ -1,0 +1,61 @@
+name: Release DashSpace CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build all packages
+        run: |
+          make build-all
+          chmod +x scripts/build-packages.sh
+          ./scripts/build-packages.sh ${{ steps.version.outputs.VERSION }}
+
+      - name: Test packages
+        run: |
+          chmod +x scripts/test-installation.sh
+          ./scripts/test-installation.sh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            packages/*.tar.gz
+            packages/*.zip
+            packages/*.deb
+            packages/dashspace.rb
+            packages/checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew tap (if exists)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "🍺 Homebrew formula updated in packages/dashspace.rb"
+          echo "Submit to your homebrew tap or homebrew-core"
+
+      - name: Upload Debian package
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "🐧 Debian package ready for APT repository"
+          echo "Upload packages/dashspace_${{ steps.version.outputs.VERSION }}_amd64.deb to your APT repo"

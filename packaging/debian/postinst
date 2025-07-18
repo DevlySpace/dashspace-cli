@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+echo "Configuring DashSpace CLI..."
+mkdir -p /etc/dashspace
+if [ -d /usr/share/bash-completion/completions ]; then
+    /usr/local/bin/dashspace completion bash > /usr/share/bash-completion/completions/dashspace 2>/dev/null || true
+fi
+echo "✅ DashSpace CLI installed successfully"
+exit 0

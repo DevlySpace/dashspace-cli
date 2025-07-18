@@ -1,0 +1,11 @@
+Package: dashspace-cli
+Version: 1.0.0
+Section: devel
+Priority: optional
+Architecture: amd64
+Depends: libc6 (>= 2.17)
+Maintainer: DashSpace Team <tech@dashspace.space>
+Description: Official DashSpace CLI for creating and publishing modules
+ DashSpace CLI enables developers to create, test and publish
+ modules for the DashSpace ecosystem.
+Homepage: https://dashspace.space
