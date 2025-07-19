@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/devlyspace/devly-cli/internal/templates"
+	"github.com/devlyspace/dashspace-cli/internal/templates"
 	"github.com/spf13/cobra"
 )
 

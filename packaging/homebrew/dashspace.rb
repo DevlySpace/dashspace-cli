@@ -6,10 +6,10 @@ class Dashspace < Formula
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/devlyspace/devly-cli/releases/download/#{version}/dashspace-darwin-arm64"
+      url "https://github.com/devlyspace/dashspace-cli/releases/download/#{version}/dashspace-darwin-arm64"
       sha256 "PLACEHOLDER_ARM64_SHA"
     else
-      url "https://github.com/devlyspace/devly-cli/releases/download/#{version}/dashspace-darwin-amd64"
+      url "https://github.com/devlyspace/dashspace-cli/releases/download/#{version}/dashspace-darwin-amd64"
       sha256 "PLACEHOLDER_AMD64_SHA"
     end
   end

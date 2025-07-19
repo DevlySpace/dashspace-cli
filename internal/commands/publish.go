@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/devlyspace/devly-cli/internal/api"
-	"github.com/devlyspace/devly-cli/internal/utils"
+	"github.com/devlyspace/dashspace-cli/internal/api"
+	"github.com/devlyspace/dashspace-cli/internal/utils"
 	"github.com/spf13/cobra"
 )
 

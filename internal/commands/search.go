@@ -3,7 +3,7 @@ package commands
 import (
 	"fmt"
 
-	"github.com/devlyspace/devly-cli/internal/api"
+	"github.com/devlyspace/dashspace-cli/internal/api"
 	"github.com/spf13/cobra"
 )
 

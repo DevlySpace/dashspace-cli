@@ -43,10 +43,10 @@ class Dashspace < Formula
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-darwin-arm64"
+      url "https://github.com/devlyspace/dashspace-cli/releases/download/$VERSION/dashspace-darwin-arm64"
       sha256 "$ARM64_SHA"
     else
-      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-darwin-amd64"
+      url "https://github.com/devlyspace/dashspace-cli/releases/download/$VERSION/dashspace-darwin-amd64"
       sha256 "$AMD64_SHA"
     end
   end
@@ -94,10 +94,10 @@ echo ""
 echo "📋 Installation options for users:"
 echo ""
 echo "  Option 1 - Direct install:"
-echo "    brew install https://raw.githubusercontent.com/devlyspace/devly-cli/main/packaging/homebrew/dashspace.rb"
+echo "    brew install https://raw.githubusercontent.com/devlyspace/dashspace-cli/main/packaging/homebrew/dashspace.rb"
 echo ""
 echo "  Option 2 - Download then install:"
-echo "    curl -O https://raw.githubusercontent.com/devlyspace/devly-cli/main/packaging/homebrew/dashspace.rb"
+echo "    curl -O https://raw.githubusercontent.com/devlyspace/dashspace-cli/main/packaging/homebrew/dashspace.rb"
 echo "    brew install ./dashspace.rb"
 echo ""
 echo "💡 Pro tip: Create a separate 'homebrew-dashspace' repo for a cleaner tap experience"

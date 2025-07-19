@@ -1,4 +1,4 @@
-module github.com/devlyspace/devly-cli
+module github.com/devlyspace/dashspace-cli
 
 go 1.21
 

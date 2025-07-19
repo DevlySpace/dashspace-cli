@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/devlyspace/devly-cli/internal/config"
+	"github.com/devlyspace/dashspace-cli/internal/config"
 )
 
 type Client struct {
