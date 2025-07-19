@@ -35,16 +35,20 @@ class Dashspace < Formula
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/devlyspace/dashspace-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-arm64.tar.gz"
+      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-arm64.tar.gz"
       sha256 "$ARM64_SHA"
     else
-      url "https://github.com/devlyspace/dashspace-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-amd64.tar.gz"
+      url "https://github.com/devlyspace/devly-cli/releases/download/$VERSION/dashspace-$VERSION-darwin-amd64.tar.gz"
       sha256 "$AMD64_SHA"
     end
   end
 
   def install
-    bin.install "dashspace" => "dashspace"
+    if Hardware::CPU.arm?
+      bin.install "dashspace-darwin-arm64" => "dashspace"
+    else
+      bin.install "dashspace-darwin-amd64" => "dashspace"
+    end
 
     begin
       generate_completions_from_executable(bin/"dashspace", "completion")
