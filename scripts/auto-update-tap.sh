@@ -15,14 +15,14 @@ fi
 
 echo "🍺 Auto-updating Homebrew tap for $VERSION"
 
-if [ ! -f "$BUILD_DIR/dashspace-darwin-amd64.tar.gz" ] || [ ! -f "$BUILD_DIR/dashspace-darwin-arm64.tar.gz" ]; then
+if [ ! -f "$BUILD_DIR/dashspace-darwin-amd64" ] || [ ! -f "$BUILD_DIR/dashspace-darwin-arm64" ]; then
     echo "❌ macOS binaries not found. Run 'make build-all' first"
     exit 1
 fi
 
 echo "🔐 Calculating checksums..."
-AMD64_SHA=$(shasum -a 256 "$BUILD_DIR/dashspace-darwin-amd64.tar.gz" | cut -d' ' -f1)
-ARM64_SHA=$(shasum -a 256 "$BUILD_DIR/dashspace-darwin-arm64.tar.gz" | cut -d' ' -f1)
+AMD64_SHA=$(shasum -a 256 "packages/dashspace-$VERSION-darwin-amd64.tar.gz" | cut -d' ' -f1)
+ARM64_SHA=$(shasum -a 256 "packages/dashspace-$VERSION-darwin-arm64.tar.gz" | cut -d' ' -f1)
 
 echo "📝 Generating updated formula..."
 
