@@ -243,3 +243,7 @@ func (c *Client) request(method, endpoint string, payload interface{}) ([]byte, 
 
 	return respBody, nil
 }
+
+func (c *Client) GetProfile() (*User, error) {
+	return c.GetCurrentUser()
+}

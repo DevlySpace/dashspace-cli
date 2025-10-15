@@ -404,6 +404,8 @@ const ChartComponent: React.FC = () => {
         return <div className="p-4 text-center">Configuring...</div>;
     }
 
+    const maxValue = chartData ? Math.max(...chartData.values) : 100;
+
     return (
         <div className="p-4 bg-white rounded-lg shadow">
             <h2 className="text-xl font-bold mb-4">{config.title || 'Chart'}</h2>
@@ -416,7 +418,7 @@ const ChartComponent: React.FC = () => {
                         <div key={index} className="flex-1 flex flex-col items-center">
                             <div
                                 className="bg-blue-500 w-full rounded-t"
-                                style={{ height: ` + "`${(value / Math.max(...chartData.values)) * 100}%`" + ` }}
+                                style={{ height: `+"`${(value / maxValue) * 100}%`"+` }}
                             ></div>
                             <span className="text-xs mt-1">{chartData.labels[index]}</span>
                         </div>
@@ -599,21 +601,15 @@ A Dashspace module built with TypeScript and React.
 ## Development
 
 Install dependencies:
-\`\`\`bash
-npm install
-\`\`\`
+%s
 
 Build the module:
-\`\`\`bash
-npm run build
-\`\`\`
+%s
 
 ## Publishing
 
 Build and publish to Dashspace:
-\`\`\`bash
-dashspace publish
-\`\`\`
+%s
 
 ## Configuration
 
@@ -625,7 +621,12 @@ This module was created using the **%s** template.
 
 ## License
 
-MIT`, strings.Title(strings.ReplaceAll(name, "-", " ")), templateType)
+MIT`,
+		strings.Title(strings.ReplaceAll(name, "-", " ")),
+		"```bash\nnpm install\n```",
+		"```bash\nnpm run build\n```",
+		"```bash\ndashspace publish\n```",
+		templateType)
 }
 
 func toPascalCase(s string) string {

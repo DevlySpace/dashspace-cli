@@ -5,7 +5,7 @@ BINARY_NAME = dashspace
 BUILD_DIR = dist
 SCRIPTS_DIR = scripts
 
-build-all: clean
+build-all: clean copy-templates
 	mkdir -p $(BUILD_DIR)
 	GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 main.go
 	GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 main.go
@@ -13,9 +13,14 @@ build-all: clean
 	GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 main.go
 	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe main.go
 
-build:
+build: copy-templates
 	mkdir -p $(BUILD_DIR)
 	go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME) main.go
+
+copy-templates:
+	mkdir -p $(BUILD_DIR)/templates
+	cp -r internal/templates/* $(BUILD_DIR)/templates/ || echo "No templates found"
+
 
 test:
 	go test ./...
@@ -50,6 +55,8 @@ package: build-all setup-scripts
 
 install: build
 	sudo cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
+	sudo mkdir -p /usr/local/share/dashspace/templates
+	sudo cp -r internal/templates/* /usr/local/share/dashspace/templates/
 
 clean:
 	rm -rf $(BUILD_DIR) packages/
@@ -73,7 +80,7 @@ update-tap: build-all setup-scripts
 complete-release: setup-scripts
 	@read -p "Enter version (e.g., 1.0.0): " version; \
 	chmod +x $(SCRIPTS_DIR)/release-workflow.sh; \
-	$(SCRIPTS_DIR)/release-workflow.sh $version
+	$(SCRIPTS_DIR)/release-workflow.sh $$version
 
 help:
 	@echo "Available targets:"

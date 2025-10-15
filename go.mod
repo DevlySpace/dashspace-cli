@@ -3,6 +3,9 @@ module github.com/devlyspace/dashspace-cli
 go 1.21
 
 require (
+	github.com/evanw/esbuild v0.25.9
+	github.com/fsnotify/fsnotify v1.9.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/term v0.16.0
 )

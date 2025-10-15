@@ -1,20 +1,112 @@
 package commands
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/devlyspace/dashspace-cli/internal/api"
 	"github.com/devlyspace/dashspace-cli/internal/config"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
+
+// ====== COMMAND DEFINITIONS ======
+
+func NewLoginCmd() *cobra.Command {
+	var webLogin bool
+
+	cmd := &cobra.Command{
+		Use:   "login",
+		Short: "Login to DashSpace",
+		Long:  "Authenticate with DashSpace to publish modules",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if webLogin {
+				return handleWebLogin()
+			}
+			return handleLogin()
+		},
+	}
+
+	cmd.Flags().BoolVarP(&webLogin, "web", "w", false, "Use web browser for authentication")
+
+	return cmd
+}
+
+func NewLogoutCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "logout",
+		Short: "Logout from DashSpace",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return handleLogout()
+		},
+	}
+}
+
+func NewWhoamiCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "whoami",
+		Short: "Display current logged in user",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return handleWhoami()
+		},
+	}
+}
+
+// ====== HANDLER FUNCTIONS ======
+
+func handleLogin() error {
+	fmt.Println("🔐 Login to DashSpace")
+	fmt.Println("───────────────────")
+
+	reader := bufio.NewReader(os.Stdin)
+
+	// Get email
+	fmt.Print("Email: ")
+	email, _ := reader.ReadString('\n')
+	email = strings.TrimSpace(email)
+
+	// Get password
+	fmt.Print("Password: ")
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return fmt.Errorf("error reading password: %v", err)
+	}
+	password := strings.TrimSpace(string(bytePassword))
+	fmt.Println() // New line after password
+
+	// Authenticate
+	fmt.Println("\n⏳ Authenticating...")
+	client := api.NewClient()
+	authResponse, err := client.Login(email, password)
+	if err != nil {
+		return fmt.Errorf("❌ Authentication failed: %v", err)
+	}
+
+	// Save credentials
+	cfg := config.GetConfig()
+	cfg.AuthToken = authResponse.Token
+	cfg.Username = authResponse.User.Username
+	cfg.Email = authResponse.User.Email
+
+	if err := config.SaveConfig(); err != nil {
+		return fmt.Errorf("failed to save configuration: %v", err)
+	}
+
+	fmt.Printf("\n✅ Successfully logged in as %s\n", cfg.Username)
+	fmt.Println("📦 You can now publish modules to DashSpace!")
+
+	return nil
+}
 
 func handleWebLogin() error {
 	fmt.Println("🚀 Opening DashSpace app for authentication...")
@@ -39,6 +131,47 @@ func handleWebLogin() error {
 
 	return saveAuthConfig(authResponse)
 }
+
+func handleLogout() error {
+	cfg := config.GetConfig()
+
+	if cfg.AuthToken == "" {
+		fmt.Println("❌ You are not logged in")
+		return nil
+	}
+
+	// Clear auth info
+	config.ClearAuth()
+
+	fmt.Println("✅ Successfully logged out")
+	return nil
+}
+
+func handleWhoami() error {
+	cfg := config.GetConfig()
+
+	if cfg.AuthToken == "" {
+		fmt.Println("❌ Not logged in")
+		fmt.Println("💡 Run 'dashspace login' to authenticate")
+		return nil
+	}
+
+	fmt.Println("👤 Current user:")
+	fmt.Printf("   Username: %s\n", cfg.Username)
+	fmt.Printf("   Email: %s\n", cfg.Email)
+
+	// Optionally verify token is still valid
+	client := api.NewClient()
+	if _, err := client.GetProfile(); err != nil {
+		fmt.Println("\n⚠️  Your session may have expired. Please login again.")
+	} else {
+		fmt.Println("\n✅ Session is active")
+	}
+
+	return nil
+}
+
+// ====== UTILITY FUNCTIONS ======
 
 func waitForAuthCallback(expectedState string) (*api.AuthResponse, error) {
 	resultChan := make(chan *api.AuthResponse, 1)
@@ -169,102 +302,23 @@ func openDeepLink(link string) error {
 	return exec.Command(cmd, args...).Start()
 }
 
-// Server Side - internal/features/auth/cli/deeplink_handler.go
-
-// Frontend Integration - App Side (React/Vue/etc)
-
-// 1. Deep Link Handler in App
-/*
-// src/utils/deepLinkHandler.ts
-export class DeepLinkHandler {
-    static handleAuthCLI(params: URLSearchParams) {
-        const state = params.get('state');
-        if (!state) {
-            console.error('No state parameter in deep link');
-            return;
-        }
-
-        // Show CLI auth dialog/modal
-        this.showCLIAuthDialog(state);
-    }
-
-    static async showCLIAuthDialog(state: string) {
-        // Show modal asking user to confirm CLI authentication
-        const confirmed = await showConfirmDialog({
-            title: 'CLI Authentication Request',
-            message: 'A CLI tool is requesting access to your account. Do you want to authorize this?',
-            confirmText: 'Authorize',
-            cancelText: 'Cancel'
-        });
-
-        if (confirmed) {
-            await this.authorizeCliAccess(state);
-        }
-    }
-
-    static async authorizeCliAccess(state: string) {
-        try {
-            const response = await fetch('/api/auth/cli/generate-token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getAuthToken()}`
-                },
-                body: JSON.stringify({ state })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                // Open the callback URL to complete CLI authentication
-                window.open(data.callback_url, '_blank');
-
-                showSuccessMessage('CLI access authorized successfully!');
-            }
-        } catch (error) {
-            console.error('CLI auth error:', error);
-            showErrorMessage('Failed to authorize CLI access');
-        }
-    }
+func generateRandomState() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
 }
 
-// 2. App Router Integration
-// src/App.tsx or main router
-useEffect(() => {
-    const handleDeepLink = (url: string) => {
-        const urlObj = new URL(url);
+func saveAuthConfig(authResponse *api.AuthResponse) error {
+	cfg := config.GetConfig()
 
-        if (urlObj.protocol === 'dashspace:' && urlObj.pathname === '/auth/cli') {
-            DeepLinkHandler.handleAuthCLI(urlObj.searchParams);
-        }
-    };
+	cfg.AuthToken = authResponse.Token
+	cfg.Username = authResponse.User.Username
+	cfg.Email = authResponse.User.Email
 
-    // Listen for deep links
-    if (window.electronAPI) {
-        window.electronAPI.onDeepLink(handleDeepLink);
-    }
-}, []);
+	if err := config.SaveConfig(); err != nil {
+		return fmt.Errorf("failed to save configuration: %v", err)
+	}
 
-// 3. Electron Main Process Integration
-// src/main/index.ts
-import { app, protocol } from 'electron';
-
-app.setAsDefaultProtocolClient('dashspace');
-
-app.on('open-url', (event, url) => {
-    event.preventDefault();
-    // Send deep link to renderer
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('deep-link', url);
-    }
-});
-
-// Windows/Linux handling
-app.on('second-instance', (event, commandLine) => {
-    const url = commandLine.find(arg => arg.startsWith('dashspace://'));
-    if (url && mainWindow) {
-        mainWindow.webContents.send('deep-link', url);
-        mainWindow.show();
-    }
-});
-*/
+	fmt.Printf("\n✅ Successfully logged in as %s\n", cfg.Username)
+	return nil
+}

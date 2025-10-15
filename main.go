@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/devlyspace/dashspace-cli/internal/commands/build"
 	"os"
 
 	"github.com/devlyspace/dashspace-cli/internal/commands"
@@ -29,6 +30,8 @@ des modules pour l'écosystème DashSpace.`,
 	rootCmd.AddCommand(commands.NewPreviewCmd())
 	rootCmd.AddCommand(commands.NewPublishCmd())
 	rootCmd.AddCommand(commands.NewSearchCmd())
+	rootCmd.AddCommand(build.NewBuildCmd())
+	rootCmd.AddCommand(commands.NewDevCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

@@ -22,7 +22,7 @@ make package VERSION="$VERSION"
 
 echo ""
 echo "🧪 Step 2: Testing packages..."
-make test-packages
+make test-packages VERSION="$VERSION"
 
 echo ""
 echo "🍺 Step 3: Updating Homebrew formula..."
@@ -46,7 +46,7 @@ else
 fi
 
 echo ""
-echo "🏠 Step 5: Updating Homebrew tap..."
+echo "🍺 Step 5: Updating Homebrew tap..."
 if [ -d "$HOMEBREW_TAP_REPO" ]; then
     echo "Copying formula to Homebrew tap repository..."
     mkdir -p "$HOMEBREW_TAP_REPO/Formula"
