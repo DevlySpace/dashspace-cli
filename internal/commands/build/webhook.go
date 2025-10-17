@@ -271,6 +271,7 @@ func (v *WebhookValidator) isValidProviderName(provider string) bool {
 	validProviders := map[string]bool{
 		"github":   true,
 		"gitlab":   true,
+		"google":   true,
 		"slack":    true,
 		"stripe":   true,
 		"twilio":   true,

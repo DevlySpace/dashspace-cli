@@ -235,14 +235,27 @@ func (d *DataSchemaExtractor) ValidateDataSchema(schema *ModuleDataSchema) error
 		fmt.Printf("⚠️  Warning: No data type specified (using 'generic')\n")
 	} else {
 		validTypes := map[string]bool{
-			"issue-tracker":     true,
-			"payment-system":    true,
-			"error-tracking":    true,
-			"deployment-system": true,
-			"task-management":   true,
-			"communication":     true,
-			"analytics":         true,
-			"generic":           true,
+			"issue-tracker":      true,
+			"code-review":        true,
+			"version-control":    true,
+			"ci-cd":              true,
+			"payment-system":     true,
+			"error-tracking":     true,
+			"monitoring":         true,
+			"deployment-system":  true,
+			"task-management":    true,
+			"project-management": true,
+			"communication":      true,
+			"calendar":           true,
+			"documentation":      true,
+			"analytics":          true,
+			"database":           true,
+			"api-service":        true,
+			"cloud-storage":      true,
+			"authentication":     true,
+			"notification":       true,
+			"workflow":           true,
+			"generic":            true,
 		}
 
 		if !validTypes[schema.DataType] {
